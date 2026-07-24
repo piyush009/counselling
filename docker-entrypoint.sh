@@ -9,11 +9,8 @@ if [ ! -f /app/data/.seeded ]; then
   touch /app/data/.seeded
 fi
 
-if [ -f ./node_modules/prisma/build/index.js ]; then
-  echo "Applying database schema updates..."
-  node ./node_modules/prisma/build/index.js db push --skip-generate || \
-    echo "Warning: schema push failed; continuing with existing DB."
-fi
+echo "Applying lightweight SQLite migrations..."
+node ./sqlite-migrate.mjs || echo "Warning: migrate skipped."
 
 echo "Starting Counselling Desk on ${HOSTNAME:-0.0.0.0}:${PORT:-3000}..."
 exec node server.js
