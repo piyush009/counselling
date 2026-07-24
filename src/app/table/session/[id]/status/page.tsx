@@ -73,10 +73,10 @@ export default async function AlreadyDoneStatusPage({
             ok ? "text-ok" : "text-bad"
           }`}
         >
-          Is candidate ka counselling ho chuka hai
+          Counselling for this candidate has already been completed
         </p>
         <p className="mt-2 text-center text-lg text-ink-soft">
-          Result:{" "}
+          Outcome:{" "}
           <strong className={ok ? "text-ok" : "text-bad"}>
             {ok ? "Successful" : "Unsuccessful"}
           </strong>
@@ -104,14 +104,14 @@ export default async function AlreadyDoneStatusPage({
         </div>
 
         <p className="mx-auto mt-10 max-w-xl text-center text-xl font-semibold text-ink md:text-2xl">
-          Kya aap sach mein is counselling ko phir se edit karna chahte ho?
+          Do you want to edit this counselling record again?
         </p>
 
         <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:flex-wrap">
           <ActionForm action={confirmEditCounselling}>
             <input type="hidden" name="sessionId" value={session.id} />
             <button className="btn btn-primary w-full sm:w-auto" type="submit">
-              Haan, edit karo
+              Yes, edit record
             </button>
           </ActionForm>
 
@@ -119,11 +119,11 @@ export default async function AlreadyDoneStatusPage({
             href={`/table/session/${session.id}/result`}
             className="btn btn-accent text-center"
           >
-            Final QR / certificate page
+            Open final certificate / QR
           </Link>
 
           <Link href="/table" className="btn btn-ghost text-center">
-            Cancel — dusra roll
+            Cancel — enter another roll number
           </Link>
         </div>
       </div>
