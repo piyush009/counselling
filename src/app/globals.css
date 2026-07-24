@@ -1,16 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --ink: #0f2744;
-  --ink-soft: #3a516e;
-  --paper: #f3f0e8;
-  --paper-2: #e8e2d4;
-  --accent: #1a6b5a;
-  --accent-2: #c45c26;
-  --line: #cfc6b4;
-  --ok: #1a6b5a;
-  --bad: #a33b2b;
-  --warn: #b07a12;
+  /* BTSC Teacher Recruitment Portal palette (PPT + portal reference) */
+  --ink: #0f172a;
+  --ink-soft: #475569;
+  --paper: #f8fbff;
+  --paper-2: #eef4ff;
+  --accent: #2563eb;
+  --accent-2: #01aed1;
+  --accent-deep: #1e3a8a;
+  --line: #bfdbfe;
+  --ok: #059669;
+  --bad: #dc2626;
+  --warn: #d97706;
+  --header-bg: linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #3b82f6 100%);
+  --page-bg: linear-gradient(180deg, #f8fbff 0%, #eef4ff 45%, #f1f5f9 100%);
+  --highlight: #f7e61c;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 20px 50px rgba(15, 23, 42, 0.12);
 }
 
 @theme inline {
@@ -20,12 +28,14 @@
   --color-paper-2: var(--paper-2);
   --color-accent: var(--accent);
   --color-accent-2: var(--accent-2);
+  --color-accent-deep: var(--accent-deep);
   --color-line: var(--line);
   --color-ok: var(--ok);
   --color-bad: var(--bad);
   --color-warn: var(--warn);
-  --font-display: "Fraunces", Georgia, serif;
-  --font-body: "Source Sans 3", "Segoe UI", sans-serif;
+  --color-highlight: var(--highlight);
+  --font-display: "Plus Jakarta Sans", "Segoe UI", sans-serif;
+  --font-body: "Plus Jakarta Sans", "Segoe UI", sans-serif;
 }
 
 html,
@@ -37,10 +47,8 @@ body {
   margin: 0;
   color: var(--ink);
   font-family: var(--font-body);
-  background:
-    radial-gradient(ellipse 80% 50% at 10% -10%, #d9ebe4 0%, transparent 55%),
-    radial-gradient(ellipse 60% 40% at 100% 0%, #f0ddd0 0%, transparent 50%),
-    linear-gradient(180deg, #f7f4ed 0%, var(--paper) 40%, #ebe6da 100%);
+  background: var(--page-bg);
+  -webkit-font-smoothing: antialiased;
 }
 
 h1,
@@ -48,7 +56,7 @@ h2,
 h3,
 .font-display {
   font-family: var(--font-display);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 
@@ -64,10 +72,50 @@ button {
   font: inherit;
 }
 
+.top-bar {
+  background: var(--header-bg);
+  color: #fff;
+  box-shadow: var(--shadow-md);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.brand-mark {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.brand-mark img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.portal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(247, 230, 28, 0.95);
+  color: #1e3a8a;
+}
+
 .card-panel {
-  background: rgba(255, 252, 246, 0.92);
+  background: #ffffff;
   border: 1px solid var(--line);
-  box-shadow: 0 12px 40px rgba(15, 39, 68, 0.06);
+  box-shadow: var(--shadow-md);
 }
 
 .btn {
@@ -75,60 +123,74 @@ button {
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  border-radius: 0.35rem;
-  padding: 0.65rem 1.1rem;
+  border-radius: 10px;
+  padding: 0.7rem 1.15rem;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: transform 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+  font-weight: 600;
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .btn:hover {
   transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+  box-shadow: none;
 }
 
 .btn-primary {
-  background: var(--ink);
-  color: #f7f4ed;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
 }
 
 .btn-accent {
-  background: var(--accent);
-  color: #f7f4ed;
+  background: linear-gradient(135deg, #01aed1 0%, #0284c7 100%);
+  color: #fff;
 }
 
 .btn-ghost {
-  background: transparent;
+  background: #fff;
   border-color: var(--line);
-  color: var(--ink);
+  color: var(--accent-deep);
+}
+
+.btn-ghost:hover {
+  background: #eff6ff;
 }
 
 .field {
   width: 100%;
-  border: 1px solid var(--line);
-  background: #fffdf8;
-  border-radius: 0.35rem;
-  padding: 0.7rem 0.85rem;
+  border: 1px solid #bfdbfe;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
   color: var(--ink);
 }
 
 .field:focus {
-  outline: 2px solid rgba(26, 107, 90, 0.35);
+  outline: 2px solid rgba(37, 99, 235, 0.35);
   outline-offset: 1px;
+  border-color: #93c5fd;
 }
 
 .label {
   display: block;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--ink-soft);
   margin-bottom: 0.35rem;
+  font-weight: 600;
 }
 
 .badge {
@@ -136,30 +198,43 @@ button {
   align-items: center;
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .badge-ok {
-  background: #d8ebe4;
+  background: #ecfdf5;
   color: var(--ok);
 }
 
 .badge-bad {
-  background: #f0d7d2;
+  background: #fef2f2;
   color: var(--bad);
 }
 
 .badge-warn {
-  background: #f3e6c8;
+  background: #fffbeb;
   color: var(--warn);
 }
 
 .badge-muted {
-  background: var(--paper-2);
+  background: #f1f5f9;
   color: var(--ink-soft);
+}
+
+.nav-link {
+  border-radius: 8px;
+  padding: 0.4rem 0.7rem;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.nav-link:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
 }
 
 @media print {

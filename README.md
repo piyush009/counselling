@@ -8,6 +8,7 @@ Multi-table counselling verification system built from the audio briefing requir
 - Prisma + SQLite
 - Mock BPC API and fingerprint (AKPI) vendor API
 - Demo OTP shown in UI (no real SMS)
+- **UI v2** aligned with BTSC Teacher Recruitment Portal (navy/blue header, cyan accent, Plus Jakarta Sans)
 
 ## Setup
 

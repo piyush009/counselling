@@ -1,20 +1,16 @@
 import type { Metadata } from "next";
-import { Fraunces, Source_Sans_3 } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
-const display = Fraunces({
+const font = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-fraunces",
-});
-
-const body = Source_Sans_3({
-  subsets: ["latin"],
-  variable: "--font-source",
+  variable: "--font-jakarta",
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
-  title: "Counselling Desk",
-  description: "Multi-table counselling verification system",
+  title: "BTSC Counselling Desk v2",
+  description: "BTSC multi-table counselling verification system",
 };
 
 export default function RootLayout({
@@ -22,12 +18,14 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className={`${display.variable} ${body.variable} antialiased`}>
+      <body className={`${font.variable} antialiased`}>
         <div
           style={
             {
-              ["--font-display" as string]: "var(--font-fraunces), Georgia, serif",
-              ["--font-body" as string]: 'var(--font-source), "Segoe UI", sans-serif',
+              ["--font-display" as string]:
+                'var(--font-jakarta), "Segoe UI", sans-serif',
+              ["--font-body" as string]:
+                'var(--font-jakarta), "Segoe UI", sans-serif',
             } as React.CSSProperties
           }
         >
