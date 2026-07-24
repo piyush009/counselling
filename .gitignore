@@ -9,4 +9,6 @@ public/uploads/*
 !public/uploads/.gitkeep
 tools/
 *.wav
+*.pem
+deploy-ec2.sh
 .DS_Store

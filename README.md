@@ -19,6 +19,21 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Docker
+
+```bash
+cp .env.docker.example .env
+docker compose up -d --build
+```
+
+App: [http://localhost:3000](http://localhost:3000)  
+SQLite + uploads persist in Docker volumes (`counselling-data`, `counselling-uploads`).
+
+```bash
+docker compose logs -f counselling
+docker compose down
+```
+
 ## Demo credentials
 
 ### Master Admin

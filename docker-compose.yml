@@ -1,0 +1,19 @@
+services:
+  counselling:
+    build: .
+    container_name: counselling-desk
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: file:/app/data/dev.db
+      AUTH_SECRET: ${AUTH_SECRET:-change-me-in-production}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      NODE_ENV: production
+    volumes:
+      - counselling-data:/app/data
+      - counselling-uploads:/app/public/uploads
+
+volumes:
+  counselling-data:
+  counselling-uploads:

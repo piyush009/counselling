@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.env
+.env.*
+*.pem
+*.db
+*.db-journal
+tools
+*.wav
+audio.mp4
+deploy-ec2.sh
+README.md
+AUDIO_DOCUMENTATION.md
