@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model DeskTable {
+  id            String   @id @default(cuid())
+  number        Int      @unique
+  name          String
+  computerLabel String
+  userId        String   @unique
+  phone         String
+  masterOtp     String
+  attr1         String
+  attr2         String
+  attr3         String
+  signaturePath String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  mappings  CandidateTableMap[]
+  sessions  TableSession[]
+  counselings CounsellingSession[]
+}
+
+model Candidate {
+  id          String   @id @default(cuid())
+  rollNumber  String   @unique
+  name        String
+  fatherName  String
+  examPassed  String
+  category    String
+  phone       String
+  photoUrl    String?
+  marks10th   String
+  marks12th   String?
+  dob         String?
+  address     String?
+  email       String?
+  createdAt   DateTime @default(now())
+
+  mappings    CandidateTableMap[]
+  counselings CounsellingSession[]
+}
+
+model CandidateTableMap {
+  id          String @id @default(cuid())
+  candidateId String
+  tableId     String
+
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  table     DeskTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+  @@unique([candidateId, tableId])
+}
+
+model TableSession {
+  id        String   @id @default(cuid())
+  tableId   String
+  token     String   @unique
+  openedAt  DateTime @default(now())
+  closedAt  DateTime?
+  isOpen    Boolean  @default(true)
+
+  table DeskTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+}
+
+model DocumentTemplate {
+  id        String  @id @default(cuid())
+  name      String
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  sessionDocs SessionDocument[]
+}
+
+model CounsellingSession {
+  id               String   @id @default(cuid())
+  candidateId      String
+  tableId          String
+  status           String   @default("in_progress") // in_progress | successful | unsuccessful
+  verifyToken      String   @unique
+  step             String   @default("roll") // roll|brief|full|otp|fingerprint|documents|done
+  candidateOtpOk   Boolean  @default(false)
+  fingerprintOk    Boolean  @default(false)
+  pdfGenerated     Boolean  @default(false)
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  completedAt      DateTime?
+
+  candidate Candidate         @relation(fields: [candidateId], references: [id])
+  table     DeskTable         @relation(fields: [tableId], references: [id])
+  documents SessionDocument[]
+}
+
+model SessionDocument {
+  id           String  @id @default(cuid())
+  sessionId    String
+  templateId   String
+  status       String  @default("pending") // pending | correct | wrong | doubtful
+  remark       String?
+
+  session  CounsellingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  template DocumentTemplate   @relation(fields: [templateId], references: [id])
+
+  @@unique([sessionId, templateId])
+}
+
+model OtpChallenge {
+  id        String   @id @default(cuid())
+  purpose   String   // table_login | candidate_verify
+  targetKey String   // phone or candidateId
+  tableId   String?
+  code      String
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
