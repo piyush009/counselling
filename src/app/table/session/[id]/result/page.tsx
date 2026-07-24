@@ -32,11 +32,23 @@ export default async function ResultPage({
     },
   });
   if (!session || session.tableId !== auth.tableId) notFound();
-  if (session.step !== "done") redirect(`/table/session/${id}`);
+
+  const canViewCertificate =
+    session.step === "done" ||
+    session.pdfGenerated ||
+    session.status === "successful" ||
+    session.status === "unsuccessful";
+  if (!canViewCertificate) redirect(`/table/session/${id}`);
 
   const qr = await makeVerifyQrDataUrl(session.verifyToken);
   const verifyUrl = appUrl(`/verify/${session.verifyToken}`);
-  const ok = session.status === "successful";
+  const ok =
+    session.status === "successful"
+      ? true
+      : session.status === "unsuccessful"
+        ? false
+        : session.documents.length > 0 &&
+          session.documents.every((d) => d.status === "correct");
 
   return (
     <TableShell tableName={table.name} tableNumber={table.number}>
@@ -47,6 +59,9 @@ export default async function ResultPage({
 
       <div className="no-print mb-6 flex flex-wrap gap-3">
         <PrintButton />
+        <Link href={`/table/session/${id}/status`} className="btn btn-ghost">
+          Back to status
+        </Link>
         <Link href="/table" className="btn btn-ghost">
           Next roll number
         </Link>

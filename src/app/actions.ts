@@ -219,38 +219,36 @@ export async function startCounselling(formData: FormData) {
   const bpc = await fetchBpcCandidate(rollNumber);
   if (!bpc.ok) return { error: bpc.error };
 
-  // Resume latest session for this candidate on this table (keep prior document reviews/remarks)
+  // Resume latest session for this candidate on this table
   const existing = await prisma.counsellingSession.findFirst({
     where: {
       candidateId: candidate.id,
       tableId: session.tableId,
     },
     orderBy: { updatedAt: "desc" },
+    include: { documents: true },
   });
 
   if (existing) {
-    const resumeStep =
+    const isCompleted =
       existing.step === "done" ||
       existing.status === "successful" ||
-      existing.status === "unsuccessful"
-        ? "documents"
-        : existing.step === "roll"
-          ? "brief"
-          : existing.step;
+      existing.status === "unsuccessful" ||
+      Boolean(existing.pdfGenerated && existing.completedAt);
 
-    await prisma.counsellingSession.update({
-      where: { id: existing.id },
-      data: {
-        step: resumeStep,
-        // Allow editing previous reviews and re-finalizing
-        status:
-          existing.step === "done" ||
-          existing.status === "successful" ||
-          existing.status === "unsuccessful"
-            ? "in_progress"
-            : existing.status,
-      },
-    });
+    if (isCompleted) {
+      // Do not mutate yet — show status gate (success/fail + edit confirm + QR page)
+      redirect(`/table/session/${existing.id}/status`);
+    }
+
+    const resumeStep =
+      existing.step === "roll" ? "brief" : existing.step || "brief";
+    if (resumeStep !== existing.step) {
+      await prisma.counsellingSession.update({
+        where: { id: existing.id },
+        data: { step: resumeStep },
+      });
+    }
 
     redirect(`/table/session/${existing.id}`);
   }
@@ -401,4 +399,30 @@ export async function finalizeCounselling(formData: FormData) {
   });
   revalidatePath(`/table/session/${sessionId}`);
   redirect(`/table/session/${sessionId}/result`);
+}
+
+export async function confirmEditCounselling(formData: FormData) {
+  const { getTableSession } = await import("@/lib/auth");
+  const auth = await getTableSession();
+  if (!auth) redirect("/table/login");
+
+  const sessionId = String(formData.get("sessionId") || "");
+  const session = await prisma.counsellingSession.findUnique({
+    where: { id: sessionId },
+  });
+  if (!session || session.tableId !== auth.tableId) {
+    return { error: "Session not found" };
+  }
+
+  await prisma.counsellingSession.update({
+    where: { id: sessionId },
+    data: {
+      step: "documents",
+      status: "in_progress",
+      notes: `reopened_from:${session.status}`,
+    },
+  });
+
+  revalidatePath(`/table/session/${sessionId}`);
+  redirect(`/table/session/${sessionId}`);
 }
