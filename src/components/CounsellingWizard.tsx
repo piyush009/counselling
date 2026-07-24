@@ -6,6 +6,8 @@ import {
   sendCandidateOtp,
   verifyCandidateOtp,
   runFingerprint,
+  sendAadhaarOtp,
+  verifyAadhaarOtp,
   saveDocumentReview,
   finalizeCounselling,
 } from "@/app/actions";
@@ -23,6 +25,9 @@ type SessionView = {
   step: string;
   candidateOtpOk: boolean;
   fingerprintOk: boolean;
+  aadhaarOk: boolean;
+  aadhaarLast4: string | null;
+  aadhaarName: string | null;
   candidate: {
     rollNumber: string;
     name: string;
@@ -30,6 +35,7 @@ type SessionView = {
     examPassed: string;
     category: string;
     phone: string;
+    aadhaarNumber: string | null;
     photoUrl: string | null;
     marks10th: string;
     marks12th: string | null;
@@ -40,12 +46,30 @@ type SessionView = {
   documents: Doc[];
 };
 
-const steps = ["brief", "full", "otp", "fingerprint", "documents"] as const;
+const steps = [
+  "brief",
+  "full",
+  "otp",
+  "fingerprint",
+  "aadhaar",
+  "documents",
+] as const;
 
 export function CounsellingWizard({ session }: { session: SessionView }) {
   const [demoOtp, setDemoOtp] = useState<string | null>(null);
+  const [aadhaarDemo, setAadhaarDemo] = useState<{
+    demoOtp?: string;
+    masked?: string;
+    name?: string;
+    phoneMasked?: string;
+    ref?: string;
+    aadhaarNumber?: string;
+  } | null>(null);
   const c = session.candidate;
-  const stepIndex = Math.max(0, steps.indexOf(session.step as (typeof steps)[number]));
+  const stepIndex = Math.max(
+    0,
+    steps.indexOf(session.step as (typeof steps)[number])
+  );
   const hasPriorReviews = session.documents.some(
     (d) => d.status !== "pending" || Boolean(d.remark)
   );
@@ -173,6 +197,149 @@ export function CounsellingWizard({ session }: { session: SessionView }) {
               </button>
             </ActionForm>
           </div>
+        </div>
+      )}
+
+      {session.step === "aadhaar" && (
+        <div className="card-panel rounded-xl p-6">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent">
+            UIDAI integration
+          </p>
+          <h2 className="mt-2 text-2xl font-extrabold text-ink">
+            Aadhaar verification
+          </h2>
+          <p className="mt-2 text-sm text-ink-soft">
+            As per BTSC portal dependencies: integrate with Aadhaar for eKYC OTP
+            verification and deduplication before document counselling.
+          </p>
+
+          {session.aadhaarOk ? (
+            <div className="mt-5 rounded-xl border border-ok/30 bg-[#ecfdf5] px-4 py-3 text-sm">
+              <p className="font-semibold text-ok">Aadhaar already verified</p>
+              <p className="mt-1 text-ink-soft">
+                {session.aadhaarName || c.name} · XXXX-XXXX-
+                {session.aadhaarLast4 || "****"}
+              </p>
+              <form action={advanceStep} className="mt-4">
+                <input type="hidden" name="sessionId" value={session.id} />
+                <input type="hidden" name="step" value="documents" />
+                <button className="btn btn-primary" type="submit">
+                  Continue to documents
+                </button>
+              </form>
+            </div>
+          ) : (
+            <>
+              {!aadhaarDemo ? (
+                <ActionForm
+                  className="mt-5 space-y-4"
+                  action={sendAadhaarOtp}
+                  onSuccess={(r) =>
+                    setAadhaarDemo({
+                      demoOtp: r.demoOtp as string,
+                      masked: r.masked as string,
+                      name: r.name as string,
+                      phoneMasked: r.phoneMasked as string,
+                      ref: r.ref as string,
+                      aadhaarNumber: r.aadhaarNumber as string,
+                    })
+                  }
+                >
+                  <input type="hidden" name="sessionId" value={session.id} />
+                  <div>
+                    <label className="label" htmlFor="aadhaarNumber">
+                      Aadhaar number
+                    </label>
+                    <input
+                      id="aadhaarNumber"
+                      name="aadhaarNumber"
+                      className="field"
+                      inputMode="numeric"
+                      maxLength={14}
+                      placeholder="12-digit Aadhaar"
+                      defaultValue={c.aadhaarNumber || ""}
+                      required
+                    />
+                  </div>
+                  <label className="flex items-start gap-2 text-sm text-ink-soft">
+                    <input
+                      type="checkbox"
+                      name="consent"
+                      className="mt-1"
+                      required
+                    />
+                    <span>
+                      I consent to use my Aadhaar number for eKYC authentication
+                      and deduplication as part of this counselling process
+                      (mock UIDAI flow for demo).
+                    </span>
+                  </label>
+                  <button className="btn btn-primary" type="submit">
+                    Send Aadhaar OTP
+                  </button>
+                </ActionForm>
+              ) : (
+                <div className="mt-5 space-y-4">
+                  <div className="rounded-xl border border-line bg-[#eff6ff] px-4 py-3 text-sm">
+                    <p>
+                      OTP sent for <strong>{aadhaarDemo.masked}</strong>
+                    </p>
+                    <p className="mt-1">Name on Aadhaar: {aadhaarDemo.name}</p>
+                    <p className="mt-1">
+                      Registered mobile: {aadhaarDemo.phoneMasked}
+                    </p>
+                    <p className="mt-1 text-ink-soft">
+                      Transaction ref: {aadhaarDemo.ref}
+                    </p>
+                    <p className="mt-2">
+                      Demo OTP:{" "}
+                      <code className="font-semibold">{aadhaarDemo.demoOtp}</code>
+                    </p>
+                  </div>
+                  <ActionForm action={verifyAadhaarOtp} className="space-y-3">
+                    <input type="hidden" name="sessionId" value={session.id} />
+                    <input
+                      type="hidden"
+                      name="aadhaarNumber"
+                      value={aadhaarDemo.aadhaarNumber || ""}
+                    />
+                    <input
+                      type="hidden"
+                      name="aadhaarName"
+                      value={aadhaarDemo.name || ""}
+                    />
+                    <input
+                      type="hidden"
+                      name="aadhaarRef"
+                      value={aadhaarDemo.ref || ""}
+                    />
+                    <div>
+                      <label className="label" htmlFor="aadhaarOtp">
+                        Enter Aadhaar OTP
+                      </label>
+                      <input
+                        id="aadhaarOtp"
+                        name="code"
+                        className="field"
+                        required
+                        autoFocus
+                      />
+                    </div>
+                    <button className="btn btn-accent" type="submit">
+                      Verify Aadhaar
+                    </button>
+                  </ActionForm>
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={() => setAadhaarDemo(null)}
+                  >
+                    Change Aadhaar number
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 

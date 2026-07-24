@@ -6,7 +6,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { signToken } from "@/lib/auth";
 import { createOtp, verifyOtp } from "@/lib/otp";
-import { fetchBpcCandidate, verifyFingerprint } from "@/lib/mocks";
+import { fetchBpcCandidate, verifyFingerprint, lookupAadhaar, checkAadhaarDedup, normalizeAadhaar } from "@/lib/mocks";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { writeFile, mkdir } from "fs/promises";
@@ -340,8 +340,109 @@ export async function runFingerprint(formData: FormData) {
   }
   await prisma.counsellingSession.update({
     where: { id: sessionId },
-    data: { fingerprintOk: true, step: "documents" },
+    data: { fingerprintOk: true, step: "aadhaar" },
   });
+  revalidatePath(`/table/session/${sessionId}`);
+  redirect(`/table/session/${sessionId}`);
+}
+
+export async function sendAadhaarOtp(formData: FormData) {
+  const sessionId = String(formData.get("sessionId") || "");
+  const aadhaarRaw = String(formData.get("aadhaarNumber") || "");
+  const consent = String(formData.get("consent") || "") === "on";
+
+  if (!consent) {
+    return { error: "Aadhaar eKYC consent is required to proceed" };
+  }
+
+  const session = await prisma.counsellingSession.findUnique({
+    where: { id: sessionId },
+    include: { candidate: true },
+  });
+  if (!session) return { error: "Session not found" };
+  if (!session.fingerprintOk) {
+    return { error: "Complete fingerprint authentication first" };
+  }
+
+  const lookup = await lookupAadhaar({
+    aadhaarNumber: aadhaarRaw,
+    expectedName: session.candidate.name,
+  });
+  if (!lookup.ok) return { error: lookup.error };
+
+  const dedup = await checkAadhaarDedup({
+    aadhaarNumber: lookup.data.aadhaarNumber,
+    excludeSessionId: sessionId,
+    excludeCandidateId: session.candidateId,
+  });
+  if (dedup.duplicate) {
+    return {
+      error: `Aadhaar already used for counselling of ${dedup.rollNumber} (${dedup.name}). Deduplication check failed.`,
+    };
+  }
+
+  // Persist Aadhaar on candidate record for future dedup
+  await prisma.candidate.update({
+    where: { id: session.candidateId },
+    data: { aadhaarNumber: lookup.data.aadhaarNumber },
+  });
+
+  const challenge = await createOtp(
+    "aadhaar_verify",
+    lookup.data.aadhaarNumber,
+    session.tableId
+  );
+
+  return {
+    ok: true,
+    demoOtp: challenge.code,
+    masked: lookup.data.masked,
+    name: lookup.data.name,
+    phoneMasked: lookup.data.phoneMasked,
+    ref: lookup.data.ref,
+    aadhaarNumber: lookup.data.aadhaarNumber,
+  };
+}
+
+export async function verifyAadhaarOtp(formData: FormData) {
+  const sessionId = String(formData.get("sessionId") || "");
+  const aadhaarNumber = String(formData.get("aadhaarNumber") || "");
+  const code = String(formData.get("code") || "").trim();
+  const aadhaarName = String(formData.get("aadhaarName") || "").trim();
+  const aadhaarRef = String(formData.get("aadhaarRef") || "").trim();
+
+  const session = await prisma.counsellingSession.findUnique({
+    where: { id: sessionId },
+    include: { candidate: true },
+  });
+  if (!session) return { error: "Session not found" };
+
+  const aadhaar = normalizeAadhaar(aadhaarNumber);
+  const ok = await verifyOtp("aadhaar_verify", aadhaar, code);
+  if (!ok) return { error: "Invalid or expired Aadhaar OTP" };
+
+  const dedup = await checkAadhaarDedup({
+    aadhaarNumber: aadhaar,
+    excludeSessionId: sessionId,
+    excludeCandidateId: session.candidateId,
+  });
+  if (dedup.duplicate) {
+    return {
+      error: `Aadhaar already used for counselling of ${dedup.rollNumber} (${dedup.name}).`,
+    };
+  }
+
+  await prisma.counsellingSession.update({
+    where: { id: sessionId },
+    data: {
+      aadhaarOk: true,
+      aadhaarLast4: aadhaar.slice(-4),
+      aadhaarName: aadhaarName || session.candidate.name,
+      aadhaarRef: aadhaarRef || `UIDAI-${aadhaar.slice(-4)}`,
+      step: "documents",
+    },
+  });
+
   revalidatePath(`/table/session/${sessionId}`);
   redirect(`/table/session/${sessionId}`);
 }
@@ -376,6 +477,7 @@ export async function finalizeCounselling(formData: FormData) {
   });
   if (!session) return { error: "Session not found" };
   if (!session.fingerprintOk) return { error: "Fingerprint not verified" };
+  if (!session.aadhaarOk) return { error: "Aadhaar verification is required" };
 
   const pending = session.documents.some((d) => d.status === "pending");
   if (pending) return { error: "Review all documents before finalize" };
@@ -417,8 +519,10 @@ export async function confirmEditCounselling(formData: FormData) {
   await prisma.counsellingSession.update({
     where: { id: sessionId },
     data: {
-      step: "documents",
+      step: session.aadhaarOk || session.pdfGenerated ? "documents" : "aadhaar",
       status: "in_progress",
+      // Grandfather pre-Aadhaar completed records so re-edit can finalize
+      aadhaarOk: session.aadhaarOk || session.pdfGenerated,
       notes: `reopened_from:${session.status}`,
     },
   });

@@ -103,6 +103,12 @@ export default async function ResultPage({
             <p>Exam: {session.candidate.examPassed}</p>
             <p>Category: {session.candidate.category}</p>
             <p>10th marks: {session.candidate.marks10th}</p>
+            <p>
+              Aadhaar:{" "}
+              {session.aadhaarOk
+                ? `XXXX-XXXX-${session.aadhaarLast4 || "****"} (verified)`
+                : "Not verified"}
+            </p>
           </div>
           <div className="text-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}

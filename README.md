@@ -64,9 +64,12 @@ Trying a roll on the wrong table shows: **User is not mapped with this table or 
 
 1. **Master Admin** — tables/users, signature upload, 3 attributes, candidate mapping, document templates, reports
 2. **Table login** — phone OTP + master OTP
-3. **Counselling wizard** — BPC profile → brief/full info → candidate OTP → fingerprint → dynamic documents → finalize
-4. **Certificate** — printable acknowledgement with photo, QR, officer signature
+3. **Counselling wizard** — BPC profile → brief/full info → candidate OTP → fingerprint → **Aadhaar eKYC (OTP + deduplication)** → dynamic documents → finalize
+4. **Certificate** — printable acknowledgement with photo, QR, officer signature, Aadhaar status
 5. **Public verify** — `/verify/[token]` from QR code
+
+### Aadhaar (mock UIDAI)
+Seeded demo Aadhaar per candidate (e.g. `234567890001` for `BPC2026001`). Enter Aadhaar → consent → OTP → verify. Duplicate Aadhaar across candidates is blocked.
 
 ## Outcome rules
 

@@ -4,8 +4,13 @@ export function generateOtp(): string {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
+export type OtpPurpose =
+  | "table_login"
+  | "candidate_verify"
+  | "aadhaar_verify";
+
 export async function createOtp(
-  purpose: "table_login" | "candidate_verify",
+  purpose: OtpPurpose,
   targetKey: string,
   tableId?: string
 ) {
@@ -22,7 +27,7 @@ export async function createOtp(
 }
 
 export async function verifyOtp(
-  purpose: "table_login" | "candidate_verify",
+  purpose: OtpPurpose,
   targetKey: string,
   code: string
 ) {

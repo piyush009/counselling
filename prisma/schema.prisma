@@ -36,20 +36,21 @@ model DeskTable {
 }
 
 model Candidate {
-  id          String   @id @default(cuid())
-  rollNumber  String   @unique
-  name        String
-  fatherName  String
-  examPassed  String
-  category    String
-  phone       String
-  photoUrl    String?
-  marks10th   String
-  marks12th   String?
-  dob         String?
-  address     String?
-  email       String?
-  createdAt   DateTime @default(now())
+  id            String   @id @default(cuid())
+  rollNumber    String   @unique
+  name          String
+  fatherName    String
+  examPassed    String
+  category      String
+  phone         String
+  aadhaarNumber String?
+  photoUrl      String?
+  marks10th     String
+  marks12th     String?
+  dob           String?
+  address       String?
+  email         String?
+  createdAt     DateTime @default(now())
 
   mappings    CandidateTableMap[]
   counselings CounsellingSession[]
@@ -92,9 +93,13 @@ model CounsellingSession {
   tableId          String
   status           String   @default("in_progress") // in_progress | successful | unsuccessful
   verifyToken      String   @unique
-  step             String   @default("roll") // roll|brief|full|otp|fingerprint|documents|done
+  step             String   @default("roll") // roll|brief|full|otp|fingerprint|aadhaar|documents|done
   candidateOtpOk   Boolean  @default(false)
   fingerprintOk    Boolean  @default(false)
+  aadhaarOk        Boolean  @default(false)
+  aadhaarLast4     String?
+  aadhaarName      String?
+  aadhaarRef       String?
   pdfGenerated     Boolean  @default(false)
   notes            String?
   createdAt        DateTime @default(now())
@@ -121,8 +126,8 @@ model SessionDocument {
 
 model OtpChallenge {
   id        String   @id @default(cuid())
-  purpose   String   // table_login | candidate_verify
-  targetKey String   // phone or candidateId
+  purpose   String   // table_login | candidate_verify | aadhaar_verify
+  targetKey String   // phone, candidateId, or aadhaar number
   tableId   String?
   code      String
   expiresAt DateTime

@@ -36,7 +36,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-cert
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma/seed.db /app/docker-seed.db
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/package.json ./package.json
 COPY docker-entrypoint.sh ./
 RUN chmod +x /app/docker-entrypoint.sh
 
