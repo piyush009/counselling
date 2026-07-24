@@ -219,6 +219,42 @@ export async function startCounselling(formData: FormData) {
   const bpc = await fetchBpcCandidate(rollNumber);
   if (!bpc.ok) return { error: bpc.error };
 
+  // Resume latest session for this candidate on this table (keep prior document reviews/remarks)
+  const existing = await prisma.counsellingSession.findFirst({
+    where: {
+      candidateId: candidate.id,
+      tableId: session.tableId,
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  if (existing) {
+    const resumeStep =
+      existing.step === "done" ||
+      existing.status === "successful" ||
+      existing.status === "unsuccessful"
+        ? "documents"
+        : existing.step === "roll"
+          ? "brief"
+          : existing.step;
+
+    await prisma.counsellingSession.update({
+      where: { id: existing.id },
+      data: {
+        step: resumeStep,
+        // Allow editing previous reviews and re-finalizing
+        status:
+          existing.step === "done" ||
+          existing.status === "successful" ||
+          existing.status === "unsuccessful"
+            ? "in_progress"
+            : existing.status,
+      },
+    });
+
+    redirect(`/table/session/${existing.id}`);
+  }
+
   const templates = await prisma.documentTemplate.findMany({
     where: { isActive: true },
     orderBy: { sortOrder: "asc" },
@@ -326,7 +362,8 @@ export async function saveDocumentReview(formData: FormData) {
     where: { id: docId },
     data: {
       status,
-      remark: status === "doubtful" ? remark : null,
+      // Keep comment text so prior remarks stay visible when reopening / editing
+      remark: remark || null,
     },
   });
   revalidatePath(`/table/session/${sessionId}`);

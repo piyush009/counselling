@@ -46,9 +46,20 @@ export function CounsellingWizard({ session }: { session: SessionView }) {
   const [demoOtp, setDemoOtp] = useState<string | null>(null);
   const c = session.candidate;
   const stepIndex = Math.max(0, steps.indexOf(session.step as (typeof steps)[number]));
+  const hasPriorReviews = session.documents.some(
+    (d) => d.status !== "pending" || Boolean(d.remark)
+  );
 
   return (
     <div className="space-y-6">
+      {hasPriorReviews && session.step === "documents" && (
+        <div className="rounded-xl border border-accent/25 bg-[#e7f2ee] px-4 py-3 text-sm">
+          Previous counselling review for <strong>{c.rollNumber}</strong> is
+          loaded. Saved document statuses and comments are shown below — you can
+          edit and finalize again.
+        </div>
+      )}
+
       <div className="no-print flex flex-wrap gap-2">
         {steps.map((s, i) => (
           <span
@@ -170,7 +181,8 @@ export function CounsellingWizard({ session }: { session: SessionView }) {
           <h2 className="font-display text-2xl">Document verification</h2>
           <p className="mt-1 text-sm text-ink-soft">
             Mark each document Correct / Wrong / Doubtful. Doubtful requires a
-            remark. Any doubtful or wrong → counselling unsuccessful.
+            remark. Previously saved comments stay visible and can be edited.
+            Any doubtful or wrong → counselling unsuccessful.
           </p>
           <div className="mt-5 space-y-4">
             {session.documents.map((d) => (
@@ -198,7 +210,7 @@ function DocumentRow({
 }) {
   const [status, setStatus] = useState(doc.status);
   const [remark, setRemark] = useState(doc.remark || "");
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(doc.status !== "pending");
 
   return (
     <div className="rounded-lg border border-line bg-[#fffdf8] p-4">
@@ -233,6 +245,16 @@ function DocumentRow({
           </button>
         ))}
       </div>
+
+      {remark && (
+        <div className="mt-3 rounded border border-warn/30 bg-[#f8f1df] px-3 py-2 text-sm">
+          <p className="text-xs uppercase tracking-[0.12em] text-ink-soft">
+            Saved comment
+          </p>
+          <p className="mt-1 whitespace-pre-wrap text-ink">{remark}</p>
+        </div>
+      )}
+
       {status === "doubtful" && (
         <textarea
           className="field mt-3"
