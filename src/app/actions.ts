@@ -490,13 +490,27 @@ export async function finalizeCounselling(formData: FormData) {
   if (allCorrect && !hasDoubtful && !hasWrong) status = "successful";
   if (hasDoubtful || hasWrong) status = "unsuccessful";
 
+  const completedAt = new Date();
+  let history: { status: string; at: string }[] = [];
+  try {
+    if (session.outcomeHistory) {
+      history = JSON.parse(session.outcomeHistory) as { status: string; at: string }[];
+      if (!Array.isArray(history)) history = [];
+    }
+  } catch {
+    history = [];
+  }
+  history.push({ status, at: completedAt.toISOString() });
+
   await prisma.counsellingSession.update({
     where: { id: sessionId },
     data: {
       status,
       step: "done",
       pdfGenerated: true,
-      completedAt: new Date(),
+      completedAt,
+      finalizeCount: { increment: 1 },
+      outcomeHistory: JSON.stringify(history),
     },
   });
   revalidatePath(`/table/session/${sessionId}`);

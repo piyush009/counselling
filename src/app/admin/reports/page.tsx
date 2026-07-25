@@ -4,45 +4,42 @@ import { getAdminSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AdminShell } from "@/components/AdminShell";
 
-type SessionRow = Awaited<
-  ReturnType<typeof prisma.counsellingSession.findMany>
->[number] & {
-  candidate: { rollNumber: string; name: string };
-  table: { number: number };
-};
+type Outcome = { status: string; at: string };
 
-/** One row per candidate+table — latest counselling only (not full history). */
-function latestPerCandidate(rows: SessionRow[]) {
-  const map = new Map<string, SessionRow>();
-  for (const r of rows) {
-    const key = `${r.candidateId}:${r.tableId}`;
-    const prev = map.get(key);
-    if (!prev || r.updatedAt > prev.updatedAt) map.set(key, r);
+function parseHistory(raw: string | null): Outcome[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as Outcome[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
   }
-  return [...map.values()].sort(
-    (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
-  );
+}
+
+function timesLabel(n: number) {
+  if (n <= 0) return "—";
+  if (n === 1) return "1 time";
+  return `${n} times`;
 }
 
 export default async function ReportsPage() {
   const session = await getAdminSession();
   if (!session) redirect("/admin/login");
 
-  const all = await prisma.counsellingSession.findMany({
+  const rows = await prisma.counsellingSession.findMany({
     include: { candidate: true, table: true },
     orderBy: { updatedAt: "desc" },
   });
-  const latest = latestPerCandidate(all);
 
   const tables = await prisma.deskTable.findMany({ orderBy: { number: "asc" } });
 
   const stats = tables.map((t) => {
-    const rows = latest.filter((r) => r.tableId === t.id);
+    const list = rows.filter((r) => r.tableId === t.id);
     return {
       table: t,
-      successful: rows.filter((r) => r.status === "successful").length,
-      unsuccessful: rows.filter((r) => r.status === "unsuccessful").length,
-      in_progress: rows.filter((r) => r.status === "in_progress").length,
+      successful: list.filter((r) => r.status === "successful").length,
+      unsuccessful: list.filter((r) => r.status === "unsuccessful").length,
+      in_progress: list.filter((r) => r.status === "in_progress").length,
     };
   });
 
@@ -62,49 +59,68 @@ export default async function ReportsPage() {
       </div>
 
       <div className="card-panel mt-6 overflow-x-auto rounded-xl p-6">
-        <h2 className="font-display text-2xl">Latest counselling per candidate</h2>
+        <h2 className="font-display text-2xl">Counselling report</h2>
         <p className="mt-1 text-sm text-ink-soft">
-          Each roll appears once — re-edit updates the same record.
+          One row per candidate. Re-finalize keeps the same row and increases the
+          count.
         </p>
-        <table className="mt-4 w-full min-w-[640px] text-left text-sm">
+        <table className="mt-4 w-full min-w-[720px] text-left text-sm">
           <thead className="text-ink-soft">
             <tr className="border-b border-line">
               <th className="py-2 pr-3 font-medium">Roll</th>
               <th className="py-2 pr-3 font-medium">Name</th>
               <th className="py-2 pr-3 font-medium">Table</th>
               <th className="py-2 pr-3 font-medium">Status</th>
+              <th className="py-2 pr-3 font-medium">Finalized</th>
               <th className="py-2 font-medium">Verify</th>
             </tr>
           </thead>
           <tbody>
-            {latest.map((r) => (
-              <tr key={r.id} className="border-b border-line/60">
-                <td className="py-2.5 pr-3 font-medium">{r.candidate.rollNumber}</td>
-                <td className="py-2.5 pr-3">{r.candidate.name}</td>
-                <td className="py-2.5 pr-3">{r.table.number}</td>
-                <td className="py-2.5 pr-3">
-                  <span
-                    className={`badge ${
-                      r.status === "successful"
-                        ? "badge-ok"
-                        : r.status === "unsuccessful"
-                          ? "badge-bad"
-                          : "badge-warn"
-                    }`}
-                  >
-                    {r.status}
-                  </span>
-                </td>
-                <td className="py-2.5">
-                  <Link
-                    className="text-accent underline"
-                    href={`/verify/${r.verifyToken}`}
-                  >
-                    Open
-                  </Link>
-                </td>
-              </tr>
-            ))}
+            {rows.map((r) => {
+              const history = parseHistory(r.outcomeHistory);
+              const trail =
+                history.length > 1
+                  ? history.map((h) => h.status.replace("_", " ")).join(" → ")
+                  : null;
+              return (
+                <tr key={r.id} className="border-b border-line/60 align-top">
+                  <td className="py-2.5 pr-3 font-medium">
+                    {r.candidate.rollNumber}
+                  </td>
+                  <td className="py-2.5 pr-3">{r.candidate.name}</td>
+                  <td className="py-2.5 pr-3">{r.table.number}</td>
+                  <td className="py-2.5 pr-3">
+                    <span
+                      className={`badge ${
+                        r.status === "successful"
+                          ? "badge-ok"
+                          : r.status === "unsuccessful"
+                            ? "badge-bad"
+                            : "badge-warn"
+                      }`}
+                    >
+                      {r.status}
+                    </span>
+                  </td>
+                  <td className="py-2.5 pr-3">
+                    <span className="font-medium">{timesLabel(r.finalizeCount)}</span>
+                    {trail && (
+                      <p className="mt-1 max-w-[220px] text-xs leading-snug text-ink-soft">
+                        {trail}
+                      </p>
+                    )}
+                  </td>
+                  <td className="py-2.5">
+                    <Link
+                      className="text-accent underline"
+                      href={`/verify/${r.verifyToken}`}
+                    >
+                      Open
+                    </Link>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

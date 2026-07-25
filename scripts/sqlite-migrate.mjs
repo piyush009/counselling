@@ -34,8 +34,10 @@ addColumn("CounsellingSession", "aadhaarOk", "BOOLEAN NOT NULL DEFAULT 0");
 addColumn("CounsellingSession", "aadhaarLast4", "TEXT");
 addColumn("CounsellingSession", "aadhaarName", "TEXT");
 addColumn("CounsellingSession", "aadhaarRef", "TEXT");
+addColumn("CounsellingSession", "finalizeCount", "INTEGER NOT NULL DEFAULT 0");
+addColumn("CounsellingSession", "outcomeHistory", "TEXT");
 
-// Keep latest session per candidate+table; drop older duplicates from testing/re-runs
+// Merge duplicate sessions into one row; preserve finalize count + outcome trail
 const groups = db
   .prepare(
     `SELECT candidateId, tableId, COUNT(*) AS c
@@ -48,17 +50,47 @@ const groups = db
 for (const g of groups) {
   const rows = db
     .prepare(
-      `SELECT id FROM CounsellingSession
+      `SELECT id, status, completedAt, createdAt, updatedAt, finalizeCount, outcomeHistory
+       FROM CounsellingSession
        WHERE candidateId = ? AND tableId = ?
        ORDER BY updatedAt DESC, createdAt DESC`
     )
     .all(g.candidateId, g.tableId);
+
+  const keep = rows[0];
+  const history = [];
+  for (const r of [...rows].reverse()) {
+    if (r.status === "successful" || r.status === "unsuccessful") {
+      history.push({
+        status: r.status,
+        at: r.completedAt || r.updatedAt || r.createdAt,
+      });
+    }
+  }
+
+  const priorCount = Number(keep.finalizeCount) || 0;
+  const finalizeCount = Math.max(priorCount, history.length, 1);
+
+  db.prepare(
+    `UPDATE CounsellingSession
+     SET finalizeCount = ?, outcomeHistory = ?
+     WHERE id = ?`
+  ).run(finalizeCount, JSON.stringify(history), keep.id);
+
   for (const r of rows.slice(1)) {
     db.prepare(`DELETE FROM SessionDocument WHERE sessionId = ?`).run(r.id);
     db.prepare(`DELETE FROM CounsellingSession WHERE id = ?`).run(r.id);
-    console.log(`Removed duplicate session ${r.id}`);
+    console.log(`Merged duplicate session ${r.id} into ${keep.id}`);
   }
 }
+
+// Backfill finalizeCount for single completed rows that still show 0
+db.exec(`
+  UPDATE CounsellingSession
+  SET finalizeCount = 1
+  WHERE finalizeCount = 0
+    AND (status = 'successful' OR status = 'unsuccessful')
+`);
 
 if (!hasIndex("CounsellingSession_candidateId_tableId_key")) {
   db.exec(

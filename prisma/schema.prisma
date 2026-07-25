@@ -101,6 +101,8 @@ model CounsellingSession {
   aadhaarName      String?
   aadhaarRef       String?
   pdfGenerated     Boolean  @default(false)
+  finalizeCount    Int      @default(0) // how many times counselling was finalized
+  outcomeHistory   String?  // JSON: [{status, at}] prior + current outcomes
   notes            String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

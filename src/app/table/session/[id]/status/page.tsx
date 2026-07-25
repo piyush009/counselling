@@ -99,6 +99,11 @@ export default async function AlreadyDoneStatusPage({
           {session.completedAt && (
             <p className="mt-2 text-xs text-ink-soft">
               Completed {new Date(session.completedAt).toLocaleString()}
+              {session.finalizeCount > 0
+                ? ` · Finalized ${session.finalizeCount} ${
+                    session.finalizeCount === 1 ? "time" : "times"
+                  }`
+                : ""}
             </p>
           )}
         </div>
