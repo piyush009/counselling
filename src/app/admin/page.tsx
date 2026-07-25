@@ -8,22 +8,26 @@ export default async function AdminDashboard() {
   const session = await getAdminSession();
   if (!session) redirect("/admin/login");
 
-  const [tables, candidates, mappings, sessions] = await Promise.all([
+  const [tables, candidates, mappings, allSessions] = await Promise.all([
     prisma.deskTable.count(),
     prisma.candidate.count(),
     prisma.candidateTableMap.count(),
-    prisma.counsellingSession.groupBy({
-      by: ["status"],
-      _count: true,
+    prisma.counsellingSession.findMany({
+      orderBy: { updatedAt: "desc" },
+      select: { candidateId: true, tableId: true, status: true, updatedAt: true },
     }),
   ]);
 
-  const success =
-    sessions.find((s) => s.status === "successful")?._count || 0;
-  const fail =
-    sessions.find((s) => s.status === "unsuccessful")?._count || 0;
-  const progress =
-    sessions.find((s) => s.status === "in_progress")?._count || 0;
+  // Count latest status per candidate+table (ignore duplicate history)
+  const latest = new Map<string, string>();
+  for (const s of allSessions) {
+    const key = `${s.candidateId}:${s.tableId}`;
+    if (!latest.has(key)) latest.set(key, s.status);
+  }
+  const statuses = [...latest.values()];
+  const success = statuses.filter((s) => s === "successful").length;
+  const fail = statuses.filter((s) => s === "unsuccessful").length;
+  const progress = statuses.filter((s) => s === "in_progress").length;
 
   return (
     <AdminShell title="Master Admin">

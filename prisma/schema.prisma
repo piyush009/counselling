@@ -109,6 +109,9 @@ model CounsellingSession {
   candidate Candidate         @relation(fields: [candidateId], references: [id])
   table     DeskTable         @relation(fields: [tableId], references: [id])
   documents SessionDocument[]
+
+  // One counselling record per candidate per table (edit updates same row)
+  @@unique([candidateId, tableId])
 }
 
 model SessionDocument {

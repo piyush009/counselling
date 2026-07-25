@@ -4,32 +4,45 @@ import { getAdminSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AdminShell } from "@/components/AdminShell";
 
+type SessionRow = Awaited<
+  ReturnType<typeof prisma.counsellingSession.findMany>
+>[number] & {
+  candidate: { rollNumber: string; name: string };
+  table: { number: number };
+};
+
+/** One row per candidate+table — latest counselling only (not full history). */
+function latestPerCandidate(rows: SessionRow[]) {
+  const map = new Map<string, SessionRow>();
+  for (const r of rows) {
+    const key = `${r.candidateId}:${r.tableId}`;
+    const prev = map.get(key);
+    if (!prev || r.updatedAt > prev.updatedAt) map.set(key, r);
+  }
+  return [...map.values()].sort(
+    (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
+  );
+}
+
 export default async function ReportsPage() {
   const session = await getAdminSession();
   if (!session) redirect("/admin/login");
 
-  const [byTable, recent] = await Promise.all([
-    prisma.counsellingSession.groupBy({
-      by: ["tableId", "status"],
-      _count: true,
-    }),
-    prisma.counsellingSession.findMany({
-      include: { candidate: true, table: true },
-      orderBy: { createdAt: "desc" },
-      take: 40,
-    }),
-  ]);
+  const all = await prisma.counsellingSession.findMany({
+    include: { candidate: true, table: true },
+    orderBy: { updatedAt: "desc" },
+  });
+  const latest = latestPerCandidate(all);
 
   const tables = await prisma.deskTable.findMany({ orderBy: { number: "asc" } });
-  const tableMap = Object.fromEntries(tables.map((t) => [t.id, t]));
 
   const stats = tables.map((t) => {
-    const rows = byTable.filter((r) => r.tableId === t.id);
+    const rows = latest.filter((r) => r.tableId === t.id);
     return {
       table: t,
-      successful: rows.find((r) => r.status === "successful")?._count || 0,
-      unsuccessful: rows.find((r) => r.status === "unsuccessful")?._count || 0,
-      in_progress: rows.find((r) => r.status === "in_progress")?._count || 0,
+      successful: rows.filter((r) => r.status === "successful").length,
+      unsuccessful: rows.filter((r) => r.status === "unsuccessful").length,
+      in_progress: rows.filter((r) => r.status === "in_progress").length,
     };
   });
 
@@ -49,7 +62,10 @@ export default async function ReportsPage() {
       </div>
 
       <div className="card-panel mt-6 overflow-x-auto rounded-xl p-6">
-        <h2 className="font-display text-2xl">Recent counselling</h2>
+        <h2 className="font-display text-2xl">Latest counselling per candidate</h2>
+        <p className="mt-1 text-sm text-ink-soft">
+          Each roll appears once — re-edit updates the same record.
+        </p>
         <table className="mt-4 w-full min-w-[640px] text-left text-sm">
           <thead className="text-ink-soft">
             <tr className="border-b border-line">
@@ -61,13 +77,11 @@ export default async function ReportsPage() {
             </tr>
           </thead>
           <tbody>
-            {recent.map((r) => (
+            {latest.map((r) => (
               <tr key={r.id} className="border-b border-line/60">
                 <td className="py-2.5 pr-3 font-medium">{r.candidate.rollNumber}</td>
                 <td className="py-2.5 pr-3">{r.candidate.name}</td>
-                <td className="py-2.5 pr-3">
-                  {tableMap[r.tableId]?.number ?? "-"}
-                </td>
+                <td className="py-2.5 pr-3">{r.table.number}</td>
                 <td className="py-2.5 pr-3">
                   <span
                     className={`badge ${
